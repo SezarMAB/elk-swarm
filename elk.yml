@@ -4,6 +4,10 @@ version: "3.7"
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+    ports:
+      - 9200:9200
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
     environment:
       - discovery.type=single-node
   kibana:
@@ -15,6 +19,28 @@ services:
       - XPACK_SECURITY_ENABLED=false
       - XPACK_GRAPH_ENABLED=false
       - XPACK_REPORTING_ENABLED=false
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.4.0
+    deploy:
+      mode: global
+    command:
+      - -E
+      - output.logstash.hosts=["logstash:5044"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:7.4.0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /proc:/hostfs/proc:ro
+      - /:/hostfs:ro
+    command:
+      - -E
+      - output.logstash.hosts=["logstash:5044"]
+    deploy:
+      mode: global
   logstash:
     image: docker.elastic.co/logstash/logstash:7.1.1
     ports:
@@ -33,9 +59,18 @@ services:
             port => 5000
           }
         }
-        output { 
-          elasticsearch {
-            hosts => [ "//elasticsearch" ]
-            index => "logstash-%{+YYYY.MM.dd}"
+        output {
+          if [@metadata][beat] {
+            elasticsearch {
+              hosts => [ "//elasticsearch" ]
+              index => "%{[@metadata][beat]}-%{[@metadata][version]}" 
+            }
+          } else {
+            elasticsearch {
+              hosts => [ "//elasticsearch" ]
+              index => "logstash-%{+YYYY.MM.dd}"
+            }
           }
         }
+volumes:
+  elasticsearch-data: {}
