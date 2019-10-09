@@ -1,0 +1,60 @@
+# docker stack deploy --prune -c elk.yml elk
+# docker service logs -f --tail=0 --raw elk_logstash
+version: "3.7"
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+    ports:
+      - 9200:9200
+    environment:
+      - discovery.type=single-node
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.4.0
+    ports:
+      - 5601:5601
+    environment:
+      - XPACK_MONITORING_ENABLED=false
+      - XPACK_SECURITY_ENABLED=false
+      - XPACK_GRAPH_ENABLED=false
+      - XPACK_REPORTING_ENABLED=false
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.1.1
+    ports:
+      - 5000:5000
+      - 5001:5001
+    environment:
+      - XPACK_MANAGEMENT_ENABLED=false
+    command:
+      # - --log.level
+      # - error
+      # - --log.level
+      # - debug
+      # - --config.debug
+      # - -e
+      # - "xpack.management.enabled: false"
+      - -e
+      - |
+        input { 
+          beats { 
+            port => 5044
+          } 
+          gelf { }
+          tcp {
+            port => 5000
+            tags => "test"
+          }
+          tcp {
+            port => 5001
+          }
+        }
+        output { 
+          if "test" in [tags] {
+            stdout {}
+          } else {
+            stdout {}
+            elasticsearch {
+              hosts => [ "//elasticsearch" ]
+              index => "logstash-%{+YYYY.MM.dd}"
+            }
+          }
+        }
