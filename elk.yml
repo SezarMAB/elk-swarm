@@ -21,17 +21,9 @@ services:
     image: docker.elastic.co/logstash/logstash:7.1.1
     ports:
       - 5000:5000
-      - 5001:5001
     environment:
       - XPACK_MANAGEMENT_ENABLED=false
     command:
-      # - --log.level
-      # - error
-      # - --log.level
-      # - debug
-      # - --config.debug
-      # - -e
-      # - "xpack.management.enabled: false"
       - -e
       - |
         input { 
@@ -41,20 +33,11 @@ services:
           gelf { }
           tcp {
             port => 5000
-            tags => "test"
-          }
-          tcp {
-            port => 5001
           }
         }
         output { 
-          if "test" in [tags] {
-            stdout {}
-          } else {
-            stdout {}
-            elasticsearch {
-              hosts => [ "//elasticsearch" ]
-              index => "logstash-%{+YYYY.MM.dd}"
-            }
+          elasticsearch {
+            hosts => [ "//elasticsearch" ]
+            index => "logstash-%{+YYYY.MM.dd}"
           }
         }
