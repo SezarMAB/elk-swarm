@@ -25,6 +25,10 @@ services:
       mode: global
     command:
       - -E
+      - output.elasticsearch.enabled=false
+      - -E
+      - output.logstash.enabled=true
+      - -E
       - output.logstash.hosts=["logstash:5044"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -38,7 +42,14 @@ services:
       - /:/hostfs:ro
     command:
       - -E
+      - autodiscover.providers=["docker"]
+      - -E
+      - output.elasticsearch.enabled=false
+      - -E
+      - output.logstash.enabled=true
+      - -E
       - output.logstash.hosts=["logstash:5044"]
+      - -v
     deploy:
       mode: global
   logstash:
@@ -63,7 +74,8 @@ services:
           if [@metadata][beat] {
             elasticsearch {
               hosts => [ "//elasticsearch" ]
-              index => "%{[@metadata][beat]}-%{[@metadata][version]}" 
+              manage_template => false
+              index => "%{[@metadata][beat]}-%{[@metadata][version]}-%{+YYYY.MM.dd}" 
             }
           } else {
             elasticsearch {
