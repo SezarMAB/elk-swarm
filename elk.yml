@@ -25,11 +25,17 @@ services:
       mode: global
     command:
       - -E
+      - filebeat.inputs=[{type:docker,containers.ids:*}]
+      - -E
+      - processors={1:{add_docker_metadata:{host:unix:///var/run/docker.sock}}} 
+      - -E
       - output.elasticsearch.enabled=false
       - -E
       - output.logstash.enabled=true
       - -E
       - output.logstash.hosts=["logstash:5044"]
+      - -v
+    user: root
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
@@ -40,16 +46,30 @@ services:
       - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
       - /proc:/hostfs/proc:ro
       - /:/hostfs:ro
+    user: root
+    environment:
+      - HOSTNAME={{.Node.Hostname}}
     command:
       - -E
-      - autodiscover.providers=["docker"]
+      - |
+        metricbeat.modules=[
+          {
+            module:docker,
+            hosts:[unix:///var/run/docker.sock],
+            period:10s,
+            enabled:true
+          }
+        ] 
+      - -E
+      - name=$${HOSTNAME}
+      - -E
+      - processors={1:{add_docker_metadata:{host:unix:///var/run/docker.sock}}} 
       - -E
       - output.elasticsearch.enabled=false
       - -E
       - output.logstash.enabled=true
       - -E
       - output.logstash.hosts=["logstash:5044"]
-      - -v
     deploy:
       mode: global
   logstash:
